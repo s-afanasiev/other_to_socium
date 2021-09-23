@@ -1,29 +1,46 @@
+//@ Данный модуль сравнивает два проекта на предмет расхождения текстового контента ( БЕЗ МЕДИА) и сохраняет новый целевой файл project_data с изменениями.
 const fs = require('fs');
 const os = require('os');
-const FB_DATA  = require("./../project_data_abbfb.js").categories;
-const SMART_DATA  = require("../project_data_smart_v2.js").categories;
-//@ const result = words.filter(word => word.length > 6);
-const FB_MEDIA  = require("./../media_data_abbfb.js");
-const FB_MEDIA_LINKS = FB_MEDIA.filter(arr=>arr[0]=="link");
-console.log("FB_MEDIA length=", FB_MEDIA.length);
-console.log("FB_MEDIA_LINKS length=", FB_MEDIA_LINKS.length);
-const SMART_MEDIA  = require("../media_data_smart.js");
+const FB_PATH = "../project_data_abbfb.js";
+const DC_PATH = "../project_data_datacenter.js";
+const MOB_PATH = "../project_data_mobility.js";
+const SMART_PATH = "../project_data_smart.js";
+//const SMART_PATH = "../new_smart_with_fb.js";
+FB_MEDIA_PATH = "../media_data_abbfb.js";
+MOB_MEDIA_PATH = "../media_data_mobility.js";
+DC_MEDIA_PATH = "../media_data_datacenter.js";
+SMART_MEDIA_PATH = "../media_data_smart.js";
+//--------------------------------------------------------------
+const SRC_DATA  = require(FB_PATH).categories;
+const SRC_MEDIA  = require(FB_MEDIA_PATH);
+const SMART_DATA  = require(SMART_PATH).categories;
+const SMART_MEDIA  = require(SMART_MEDIA_PATH);
+//------------------------------------------------------------
+const SRC_MEDIA_LINKS = SRC_MEDIA.filter(arr=>arr[0]=="link");
+console.log("SRC_MEDIA length=", SRC_MEDIA.length);
+console.log("SRC_MEDIA_LINKS length=", SRC_MEDIA_LINKS.length);
 const SIGNIFICANT_FIELDS = [];
-console.log(Object.keys(FB_DATA).length);
+console.log(Object.keys(SRC_DATA).length);
 console.log(Object.keys(SMART_DATA).length);
-const FB_ARR = Object.keys(FB_DATA);
+const FB_ARR = Object.keys(SRC_DATA);
 
 main();
+//rejson_project_data(SMART_DATA)
 
-function main2(){}
+function rejson_project_data(SMART_DATA){
+    var wrap1 = {}
+    wrap1.current_location = "home";
+    wrap1.categories = SMART_DATA;
+    fs.writeFileSync("rejsoned_smart_project_data.js", JSON.stringify(wrap1, null, 2));
+}
 function main(){
     const cat_types_counter = {"lvl_0": 0, "lvl_1_transit": 0, "modal": 0, "modal_media":0};
     let ne_popal_counter = 0;
     let all_matches_counter = 0;
     let report = "";
-    const FB_ALL_IDS = FB_MEDIA.map(arr=>arr[7]);
+    const SRC_ALL_IDS = SRC_MEDIA.map(arr=>arr[7]);
     const SMART_ALL_LINKS = SMART_MEDIA.map(arr=>arr[5]);
-    //console.log("FB_ALL_IDS=",FB_ALL_IDS);
+    //console.log("SRC_ALL_IDS=",SRC_ALL_IDS);
     FB_ARR.forEach((cat_id)=>{
         //@ категорию home пропускаем
         if(cat_id != "home"){
@@ -31,10 +48,10 @@ function main(){
             //@ Всего совпадающих категорий с abbfb: 1902. Модальных категори, содержащих ссылки медиа: 328.
             if(SMART_DATA[cat_id]){
                 all_matches_counter++
-                const cat_type = define_cat_type(FB_DATA[cat_id]);
+                const cat_type = define_cat_type(SRC_DATA[cat_id]);
                 if(cat_type){
                     cat_types_counter[cat_type]++;
-                    report += compare_cats(FB_DATA[cat_id], SMART_DATA[cat_id], cat_type, FB_ALL_IDS, SMART_ALL_LINKS);
+                    report += compare_cats(SRC_DATA[cat_id], SMART_DATA[cat_id], cat_type, SRC_ALL_IDS, SMART_ALL_LINKS);
                 }else{
                     ne_popal_counter++
                     console.error("cat type recognizing Error at: ", cat_id);
@@ -42,12 +59,12 @@ function main(){
             }
         }
     });
-    //fs.writeFileSync("report.txt", report);
+    fs.writeFileSync("report.txt", report);
     //@----- rewrite SMART DATA
     var wrap1 = {}
     wrap1.current_location = "home";
     wrap1.categories = SMART_DATA;
-    //fs.writeFileSync("new_smart_structure.json", JSON.stringify(wrap1, null, 2));
+    //fs.writeFileSync("new_smart_with_datacenter.js", JSON.stringify(wrap1, null, 2));
     //@----------------------
     console.log("cat_types_counter=", cat_types_counter);
     console.log("ne_popal_counter=", ne_popal_counter);
@@ -59,7 +76,7 @@ function main(){
 //@ param {Object} cat_dto_from - object-structure of some category which considered like standard sample
 //@ param {Object} cat_dto_to - object-structure of some category which should be compared with cat_dto_from
 //@ param {String} cat_type - one of values ["lvl_0", "lvl_1_transit", "modal", "modal_media"]
-function compare_cats(cat_dto_from, cat_dto_to, cat_type, FB_ALL_IDS, SMART_ALL_LINKS){
+function compare_cats(cat_dto_from, cat_dto_to, cat_type, SRC_ALL_IDS, SMART_ALL_LINKS){
     const cat_types = ["lvl_0", "lvl_1_transit", "modal", "modal_media"];
     let report = "";
     //@--------------------------------------
@@ -76,22 +93,23 @@ function compare_cats(cat_dto_from, cat_dto_to, cat_type, FB_ALL_IDS, SMART_ALL_
     }
     //@--------------------------------------
     else if(cat_type == cat_types[3]){
-        report += compare_cats_type_modal_media(cat_dto_from, cat_dto_to, FB_ALL_IDS, SMART_ALL_LINKS);
+        report += compare_cats_type_modal_media(cat_dto_from, cat_dto_to, SRC_ALL_IDS, SMART_ALL_LINKS);
     }
     return report;
     //@ ------SUB FUNTIONS--------
-    function compare_cats_type_modal_media(cat_dto_from, cat_dto_to, FB_ALL_IDS, SMART_ALL_LINKS){
+    function compare_cats_type_modal_media(cat_dto_from, cat_dto_to, SRC_ALL_IDS, SMART_ALL_LINKS){
         let report = "";
         //@ do the same things like with modal window
         report += compare_cats_type_modal(cat_dto_from, cat_dto_to);
         //@ And also do things with media links
+        /*
         const media_arr_from = cat_dto_from.modal_w_data.media_data;
         const media_arr_to = cat_dto_to.modal_w_data.media_data;
         media_arr_from.forEach(media_id=>{
-            const index_media_from = FB_ALL_IDS.indexOf(media_id);
+            const index_media_from = SRC_ALL_IDS.indexOf(media_id);
             if(index_media_from > -1){
                 const LINK = 5;
-                const link_from = FB_MEDIA[index_media_from][LINK];
+                const link_from = SRC_MEDIA[index_media_from][LINK];
                 const index_link_to = SMART_ALL_LINKS.indexOf(link_from);
                 if(index_link_to > -1){
                     const smart_id = SMART_MEDIA[index_link_to][7];
@@ -103,13 +121,14 @@ function compare_cats(cat_dto_from, cat_dto_to, cat_type, FB_ALL_IDS, SMART_ALL_
                     report += "Cant find FB link: " + link_from;
                 }
 
-                //console.log("FB_ALL_IDS includes ", media_id, "link=", link_from);
+                //console.log("SRC_ALL_IDS includes ", media_id, "link=", link_from);
             }else{
-                report += "WARNING: media_id "+ media_id +"has not founded in FB_MEDIA"
+                report += "WARNING: media_id "+ media_id +"has not founded in SRC_MEDIA"
                 console.error("Cant find media ID: ", media_id);
                 //throw new Error("Cant find category ID !!!");
             }
         })
+        */
         //@-------------------------------
         return report;
     }
@@ -190,25 +209,32 @@ function compare_cats(cat_dto_from, cat_dto_to, cat_type, FB_ALL_IDS, SMART_ALL_
         const btns_from = cat_dto_from.buttons;
         const btns_to = cat_dto_to.buttons;
         let situation = 0;
-        btns_from.forEach((btn_arr_from, index_from)=>{
-            //@ btn_arr_from = ["home", 45, 1015, "", {<fileds with china exists here>} ]
-            if(btn_arr_from[4] && btn_arr_from[4].languages && btn_arr_from[4].languages.language__zh){
+        //@ Проходим по кнопкам источника
+        for(let index_from=0;index_from<btns_from.length; index_from++){
+            const one_btn_from = btns_from[index_from];
+            if(one_btn_from[0] == 'home') {continue;}
+        //btns_from.forEach((one_btn_from, index_from)=>{
+            //@ one_btn_from = ["home", 45, 1015, "", {<fileds with china exists here>} ]
+            //@ Если в данной кнопке есть Китайский язык
+            else if(one_btn_from[4] && one_btn_from[4].languages && one_btn_from[4].languages.language__zh){
                 //const btn_arr_to = find_same_btn_arr();
                 //@
+                //@ Получается, что если мы не находим в целевом проекте...
                 let btn_index_to = -1;
-                btns_to.forEach((btn_arr_to, index)=>{
-                    //console.log("btn_arr_to[0]=",btn_arr_to[0])
-                    if(btn_arr_to[0] == btn_arr_from[0]){
+                const BTN_ID = 0;
+                btns_to.forEach((one_btn_to, index)=>{
+                    if(one_btn_to[0] == one_btn_from[0]){
                         btn_index_to = index;
                     }
                 });
                 if(btn_index_to == -1){
                     console.error("AHTUNG! compare_cats_type_transit():")
+                    throw new Error("AHTUNG! compare_cats_type_transit()");
                 }
                 if(index_from != btn_index_to){
-                    console.log("HMM... indexes dismatch:",index_from, btn_index_to)
+                    console.log("compare_cats_type_transit() indexes dismatch:",index_from, btn_index_to, ". At '"+cat_dto_from.category_placeholder+"'")
                 }
-                const china_dto_from = btn_arr_from[4].languages.language__zh;
+                const china_dto_from = one_btn_from[4].languages.language__zh;
                 if(!btns_to[btn_index_to][4].languages){
                     btns_to[btn_index_to][4].languages = {}
                 }
@@ -245,13 +271,22 @@ function compare_cats(cat_dto_from, cat_dto_to, cat_type, FB_ALL_IDS, SMART_ALL_
                     }
                 } 
             }
-        });
-        //@ 2. Проверить китайский в поле "languages". Но, заведомо известно, что для транзитных категорий 1 уровня это поле всегда пустое!
+        }
+        //@ 2. Проверить китайский в поле "languages". Но, заведомо известно, что для транзитных категорий 1 уровня это поле всегда пустое! Так устроено в проекте "Food" Но не в Mobility
         const lang_from = cat_dto_from.languages.language__zh;
         //@ Но если вдруг у какой-то категории это поле всё же не пустое, то вывести информацию об этом в консоль
         if(Object.keys(lang_from).length > 0){
-            console.log("TODO: compare_cats_type_transit(): lang_from!");
-            throw new Error("TODO: compare_cats_type_transit(): lang_from!");
+            const lang_to = cat_dto_to.languages.language__zh;
+            if(!cat_dto_to.languages){
+                cat_dto_to.languages = {}
+            }
+            if(!cat_dto_to.languages.language__zh){
+                cat_dto_to.languages.language__zh = {}
+            }
+            cat_dto_to.languages.language__zh = lang_from;
+            console.log("TODO: compare_cats_type_transit(): lang_from:", lang_from);
+            //console.log("parent:", cat_dto_from);
+            //throw new Error("TODO: compare_cats_type_transit(): lang_from!");
         }
         return report;
     }
@@ -278,7 +313,7 @@ function compare_cats(cat_dto_from, cat_dto_to, cat_type, FB_ALL_IDS, SMART_ALL_
                     const china_from = inner_contain_from[key][1];
                     const china_to = inner_contain_to[key][1];
                     if(china_from != china_to){
-                        report += "" + key + " at: " + cat_dto_from.category_placeholder + ", server_id: " + cat_dto_from.server_category_id + os.EOL;
+                        report += "CHINA DISMATCH: " + key + " at: " + cat_dto_from.category_placeholder + ", server_category_id in SRC Project: " + cat_dto_from.server_category_id + os.EOL;
                     }
                 });
                 const self_name_from = compared_block_from[lang_key][1];

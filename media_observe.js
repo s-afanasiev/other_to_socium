@@ -1,14 +1,17 @@
+//@ Модуль Осуществляет ряд проверок в файле Media_data.js какого-либо проекта. Например у всех ли медиа одинаковое значение в индексе 9
 const fs = require('fs');
 const os = require('os');
-// const FB_MEDIA  = require("./../media_data_abbfb.js");
-// const SMART_MEDIA  = require("./../media_data_smart.js");
-const MOB_MEDIA  = require("./../media_data_mobility.js");
+//const FB_MEDIA  = require("./../media_data_abbfb.js");
+//const SMART_MEDIA  = require("./../media_data_smart.js");
+//const MOB_MEDIA  = require("./../media_data_mobility.js");
+const DC_MEDIA  = require("./../media_data_datacenter.js");
 // first_simple_test(FB_MEDIA);
 // first_simple_test(SMART_MEDIA);
-first_simple_test(MOB_MEDIA);
+//first_simple_test(MOB_MEDIA);
 // test_is_good_elems(FB_MEDIA, "fb");
 // test_is_good_elems(SMART_MEDIA, "smart");
-test_is_good_elems(MOB_MEDIA, "mobility");
+//test_is_good_elems(MOB_MEDIA, "mobility");
+test_same_value_at_index_nine(DC_MEDIA, 9);
 
 function first_simple_test(media_data){
     const is_array = Array.isArray(media_data);
@@ -91,4 +94,16 @@ function test_is_good_elems(media_data, proj_name){
         str_res += name + " repeated elems= " + JSON.stringify(repeated, null, 2);
         return str_res;
     }
+}
+function test_same_value_at_index_nine(media_data, index){
+    const collection = {};
+    const _index = index || 9
+    media_data.forEach(el=>{
+        if(collection[el[_index]]){
+            collection[el[_index]]++;
+        }else{
+            collection[el[_index]] = 1;
+        }
+    });
+    console.log("collection=", collection);
 }

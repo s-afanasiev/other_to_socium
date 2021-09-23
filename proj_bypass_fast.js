@@ -1,3 +1,4 @@
+//@ Обрубок, не делающий практичски ничего полезного. Смотрит во всех ли категориях в разделе с китайским языком  есть поле 'title'
 const fs = require('fs');
 const os = require('os');
 const FB_DATA  = require("./../project_data_abbfb.js").categories;
