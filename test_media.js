@@ -1,13 +1,13 @@
 //@ модуль сравнивает файлы медиа (media_data) двух проектов
 const fs = require('fs');
 const os = require('os');
+const { report } = require('process');
 main();
 function main(){
     new App().run();
 }
 function App(){
     this.run=(file)=>{
-        
         //const CATS_SRC = require("../project_data_datacenter.js").categories;
         const CATS_DST = require("../project_data_abbfb.js").categories;
         //const CATS_SRC = require("../project_data_mobility.js").categories;
@@ -51,37 +51,52 @@ function App(){
                     ),
                     {}
                 )
-            )
+            ),
+            new Report()
         ).run(CATS_SRC, CATS_DST);
     }
 }
-
-function CategoriesDirectPass(catStorage, catTypes, oneCatBypass){
+function Report(){
     let _report = "";
+    this.run=()=>{
+        _report = "";
+        return this;
+    }
+    this.write=(line)=>{
+        //console.log("Report.write(): line=", line)
+        _report += line + os.EOL;
+    }
+    this.final=()=>{
+        console.log("===========> FINAL REPORT LEN =", _report.length)
+        fs.writeFileSync("./out/MEDIA_REPORT.txt", _report);
+    }
+}
+function CategoriesDirectPass(catStorage, catTypes, oneCatBypass, report){
+    //let _report = "";
     this.run=(CATS_SRC, CATS_DST)=>{
         catStorage.run();
         const cat_types = catTypes.run().types();
         Object.keys(CATS_SRC).forEach(src_cat_key=>{
             if(src_cat_key != "home"){
                 //catStorage[src_cat_key] = oneCatBypass.instance().run(cat_types, CATS_SRC, src_cat_key, CATS_DST);
-                _report += oneCatBypass.instance().run(cat_types, CATS_SRC, src_cat_key, CATS_DST).report();
+                oneCatBypass.instance().run(cat_types, CATS_SRC, src_cat_key, CATS_DST, report);
             }
         });
-        console.log("===========> FINAL REPORT LEN =", _report.length)
-        fs.writeFileSync("./out/MEDIA_REPORT.txt", _report);
+        report.final();
         return this;
     }
 }
 function OneCatBypass(ifMediaCat, id){
     const _id = id || 1;
-    let _report = "";
+    //let _report = "";
     //@ param {Object<hashtable>} cat_types, like {"lvl_0": CatL0, "lvl_1_transit": CatTransit, "modal": CatModal, "modal_media": CatModalMedia }
     this.instance=()=>{
         return new OneCatBypass(ifMediaCat, _id+1);
     }
-    this.report=()=>{return _report}
-    this.run=(cat_types, CATS_SRC, src_cat_key, CATS_DST)=>{
-        _report = ifMediaCat.instance().run(cat_types, CATS_SRC, src_cat_key, CATS_DST).report();
+    //this.report=()=>{return _report}
+    this.run=(cat_types, CATS_SRC, src_cat_key, CATS_DST, report)=>{
+        //_report = ifMediaCat.instance().run(cat_types, CATS_SRC, src_cat_key, CATS_DST).report();
+        ifMediaCat.instance().run(cat_types, CATS_SRC, src_cat_key, CATS_DST, report);
         // if(_id == 2){
         //     fs.writeFileSync("Media_Report__id_2.txt", _report);
         // }
@@ -91,14 +106,15 @@ function OneCatBypass(ifMediaCat, id){
 function IfMediaCat(catTypeRecognize, mediaCatBypass, options){
     const MODAL_MEDIA_TYPE = "modal_media";
     let _report = "";
-    this.report=()=>{return _report;}
+    // this.report=()=>{return _report;}
     this.instance=()=>{return new IfMediaCat(catTypeRecognize, mediaCatBypass, options)}
-    this.run=(cat_types, CATS_SRC, src_cat_key, CATS_DST)=>{
+    this.run=(cat_types, CATS_SRC, src_cat_key, CATS_DST, report)=>{
         const cat_type = catTypeRecognize.instance().run(CATS_SRC[src_cat_key]).type();
         //_current_category = catChinaBypass.run(CATS_SRC, src_cat_key, CATS_DST);
         if(cat_type == MODAL_MEDIA_TYPE){
             //console.log("IfMediaCat: media category:", src_cat_key);
-            _report = mediaCatBypass.instance(options).run(CATS_SRC, src_cat_key, CATS_DST).report();
+            //_report = mediaCatBypass.instance(options).run(CATS_SRC, src_cat_key, CATS_DST).report();
+            mediaCatBypass.instance(options).run(CATS_SRC, src_cat_key, CATS_DST, report)
         }
         return this;
     }
@@ -142,9 +158,10 @@ function MediaCatBypass(bothProjectdataMediaIds, MEDIADATA_SRC, MEDIADATA_DST, o
     this.bothProjectdataMediaIds = bothProjectdataMediaIds;
     options.order = options.order || 1;
     let _report = "";
-    this.report=()=>{return _report;}
-    this.run=(CATS_SRC, src_cat_key, CATS_DST)=>{
-        _report = this.bothProjectdataMediaIds.instance(options).run(CATS_SRC, src_cat_key, CATS_DST, MEDIADATA_SRC, MEDIADATA_DST).report();
+    // this.report=()=>{return _report;}
+    this.run=(CATS_SRC, src_cat_key, CATS_DST, report)=>{
+        //_report = this.bothProjectdataMediaIds.instance(options).run(CATS_SRC, src_cat_key, CATS_DST, MEDIADATA_SRC, MEDIADATA_DST).report();
+        this.bothProjectdataMediaIds.instance(options).run(CATS_SRC, src_cat_key, CATS_DST, MEDIADATA_SRC, MEDIADATA_DST, report);
         return this;
     }
     this.instance=()=>{
@@ -166,9 +183,10 @@ function BothProjectdataMediaIds(finalRevealExtraMediaIds, dstProjMedArrayShadow
     this.instance=(options)=>{
         return new BothProjectdataMediaIds(this.finalRevealExtraMediaIds, this.dstProjMedArrayShadow, options);
     }
-    this.run=(CATS_SRC, src_cat_key, CATS_DST, MEDIADATA_SRC, MEDIADATA_DST)=>{
+    this.run=(CATS_SRC, src_cat_key, CATS_DST, MEDIADATA_SRC, MEDIADATA_DST, report)=>{
+        //console.log("BothProjectdataMediaIds.run(): report=", report);
         this.src_proj_ids = _get_src_media_ids(CATS_SRC, src_cat_key, options, MEDIADATA_SRC);
-        console.log("BothProjectdataMediaIds: this.src_proj_ids=",this.src_proj_ids);
+        //console.log("BothProjectdataMediaIds: this.src_proj_ids=",this.src_proj_ids);
         this.dst_proj_ids = _get_dst_media_ids(CATS_DST, src_cat_key, options, MEDIADATA_DST);
         const dst_proj_media_ids_shadow = JSON.parse(JSON.stringify(this.dst_proj_ids));
         if(this.src_proj_ids.length == 0){
@@ -180,8 +198,9 @@ function BothProjectdataMediaIds(finalRevealExtraMediaIds, dstProjMedArrayShadow
             }
         }else{
             //@ в рамках одного массива Media-id
-            this.dstProjMedArrayShadow = this.dstProjMedArrayShadow.instance().run(dst_proj_media_ids_shadow, MEDIADATA_DST, src_cat_key);
-            _report += this.finalRevealExtraMediaIds.instance(options).run(this.src_proj_ids, this.dst_proj_ids, MEDIADATA_SRC, MEDIADATA_DST, this.dstProjMedArrayShadow, src_cat_key, CATS_DST, CATS_SRC).report();      
+            this.dstProjMedArrayShadow = this.dstProjMedArrayShadow.instance().run(dst_proj_media_ids_shadow, MEDIADATA_DST, src_cat_key, report);
+            //_report += this.finalRevealExtraMediaIds.instance(options).run(this.src_proj_ids, this.dst_proj_ids, MEDIADATA_SRC, MEDIADATA_DST, this.dstProjMedArrayShadow, src_cat_key, CATS_DST, CATS_SRC).report();      
+            this.finalRevealExtraMediaIds.instance(options).run(this.src_proj_ids, this.dst_proj_ids, MEDIADATA_SRC, MEDIADATA_DST, this.dstProjMedArrayShadow, src_cat_key, CATS_DST, CATS_SRC, report)     
         }
         return this;
     }
@@ -190,8 +209,7 @@ function BothProjectdataMediaIds(finalRevealExtraMediaIds, dstProjMedArrayShadow
         const index_id = dst_proj_shadow.indexOf(id);
         if(index_id > -1){
             dst_proj_shadow.splice(index_id, 1);
-        }
-        
+        }    
     }
     const _get_src_media_ids=function(CATS_SRC, src_cat_key, options, MEDIADATA_SRC){
         const _ID_INDEX = 7;
@@ -270,46 +288,47 @@ function FinalRevealExtraMediaIds(srcProjMedIdArrayIteration, options){
     let _report = "";
     this.report=()=>{return _report;}
     this.instance=(options)=>{return new FinalRevealExtraMediaIds(this.srcProjMedIdArrayIteration, options)}
-    this.run=(src_proj_ids, dst_proj_ids, MEDIADATA_SRC, MEDIADATA_DST, dstProjMedArrayShadow, src_cat_key, CATS_DST, CATS_SRC)=>{
-        const srcProjMedArrayIteration = this.srcProjMedIdArrayIteration.instance(options).run(src_proj_ids, dst_proj_ids, MEDIADATA_SRC, MEDIADATA_DST, dstProjMedArrayShadow, src_cat_key, CATS_DST, CATS_SRC);
+    this.run=(src_proj_ids, dst_proj_ids, MEDIADATA_SRC, MEDIADATA_DST, dstProjMedArrayShadow, src_cat_key, CATS_DST, CATS_SRC, report)=>{
+        //console.log("FinalRevealExtraMediaIds.run(): report=", report);
+        this.srcProjMedIdArrayIteration.instance(options).run(src_proj_ids, dst_proj_ids, MEDIADATA_SRC, MEDIADATA_DST, dstProjMedArrayShadow, src_cat_key, CATS_DST, CATS_SRC, report);
         //@ Кончились итерации
-        _report += srcProjMedArrayIteration.report();
-        _report += dstProjMedArrayShadow.extra_report();
+        //_report += srcProjMedArrayIteration.report();
+        //_report += dstProjMedArrayShadow.extra_report();
+        dstProjMedArrayShadow.do("extra_report");
         return this;
     }
 }
 function SrcProjMedIdArrayIteration(ifProjArrayIntersectMedfileIds, options){
     this.ifProjArrayIntersectMedfileIds = ifProjArrayIntersectMedfileIds;
     let _report = "";
-    this.report=()=>{return _report;}
+    //this.report=()=>{return _report;}
     this.instance=(options)=>{return new SrcProjMedIdArrayIteration(this.ifProjArrayIntersectMedfileIds, options)}
-    this.run=(src_proj_ids, dst_proj_ids, MEDIADATA_SRC, MEDIADATA_DST, dstProjMedArrayShadow, src_cat_key, CATS_DST, CATS_SRC)=>{
+    this.run=(src_proj_ids, dst_proj_ids, MEDIADATA_SRC, MEDIADATA_DST, dstProjMedArrayShadow, src_cat_key, CATS_DST, CATS_SRC, report)=>{
+        //console.log("SrcProjMedIdArrayIteration.run(): report=", report);
         this.ifProjArrayIntersectMedfileIds = this.ifProjArrayIntersectMedfileIds.instance(options)
-        
         if(src_proj_ids.length > 0){
             src_proj_ids.forEach(src_one_media_id=>{
-                this.ifProjArrayIntersectMedfileIds.run(
-                    src_one_media_id, dst_proj_ids, MEDIADATA_SRC, MEDIADATA_DST, dstProjMedArrayShadow, src_cat_key, CATS_DST, CATS_SRC
-                );
+                this.ifProjArrayIntersectMedfileIds.run(src_one_media_id, dst_proj_ids, MEDIADATA_SRC, MEDIADATA_DST, dstProjMedArrayShadow, src_cat_key, CATS_DST, CATS_SRC, report);
             });
-            _report += this.ifProjArrayIntersectMedfileIds.report();
+            //_report += this.ifProjArrayIntersectMedfileIds.report();
         } else {
-            _report += "ERROR:No media_data in src category:" + src_cat_key + os.EOL;
+            report.write("ERROR:No media_data in src category:" + src_cat_key);
         }
         return this;
     }
 }
 //@ это теневая копия массива айдишников одной категории целевого проекта, которая удаляет из себя те айдишники, которым нашлось соответствие с категорией проекта-источника. Соответственно в конце останутся те, id, который являются лишними, т.е. в проекте-источнике их нет, а в целевом - есть, которую по сути надо удалить, если требуется полное соответствие проектов.
 function DstProjMedArrayShadow(){
-    this._report = "";
+    let _report = undefined;//run
     this.dst_proj_media_ids_shadow = undefined;
     this.MEDIADATA_DST = undefined; //run
     this.src_cat_key = undefined; //run
     const _ID_INDEX = 7;
     const _LINK_INDEX = 5;
-    this.report=()=>{return this._report;}
+    //this.report=()=>{return this._report;}
     this.instance=()=>{return new DstProjMedArrayShadow();}
-    this.run=(dst_proj_media_ids_shadow, MEDIADATA_DST, src_cat_key)=>{
+    this.run=(dst_proj_media_ids_shadow, MEDIADATA_DST, src_cat_key, report)=>{
+        _report = report;
         this.dst_proj_media_ids_shadow = dst_proj_media_ids_shadow;
         this.MEDIADATA_DST = MEDIADATA_DST;
         this.src_cat_key = src_cat_key;
@@ -317,19 +336,23 @@ function DstProjMedArrayShadow(){
         this.MEDIADATA_DST_FLAT_LINKS = MEDIADATA_DST.map(arr=>arr[_LINK_INDEX]);
         return this;
     }
-    this.extra_report=()=>{
-        //console.log("DstProjMedArrayShadow: dst_proj_media_ids_shadow=", this.dst_proj_media_ids_shadow)
-        const links = this.dst_proj_media_ids_shadow.map(id=>{
-            //console.log("shadow id=", id)
-            const id_index = this.MEDIADATA_DST_FLAT_IDS.indexOf(id);
-            //console.log("shadow id_index=", id_index)
-            if(id_index > -1) 
-                return this.MEDIADATA_DST_FLAT_LINKS[id_index]
-        })
-        if(links.length>0){
-            //this._report += this.src_cat_key + "-->" + links + "-->" + this.dst_proj_media_ids_shadow + "-->Excess links" + os.EOL;    
+    this.do=(act)=>{
+        if(act == "extra_report"){
+            //console.log("DstProjMedArrayShadow: dst_proj_media_ids_shadow=", this.dst_proj_media_ids_shadow)
+            const links = this.dst_proj_media_ids_shadow.map(id=>{
+                //console.log("shadow id=", id)
+                const id_index = this.MEDIADATA_DST_FLAT_IDS.indexOf(id);
+                //console.log("shadow id_index=", id_index)
+                if(id_index > -1) 
+                    return this.MEDIADATA_DST_FLAT_LINKS[id_index]
+            })
+            if(links.length>0){
+                //this._report += this.src_cat_key + "-->" + links + "-->" + this.dst_proj_media_ids_shadow + "-->Excess links" + os.EOL;    
+            }
+            //return this._report;
+        }else{
+            console.error("DstProjMedArrayShadow.do() unknown action: ", act);
         }
-        return this._report;
     }
     this.del=(ids)=>{
         //console.log("DstProjMedArrayShadow.del(): before:",this.dst_proj_media_ids_shadow);
@@ -342,7 +365,7 @@ function DstProjMedArrayShadow(){
             })
         }else{
             //console.error("ERROR: DstProjMedArrayShadow.del(): dst_proj_media_ids_shadow is NOT an Array!")
-            this._report += "ERROR: DstProjMedArrayShadow.del(): dst_proj_media_ids_shadow is NOT an Array!" + os.EOL;
+            _report.write("ERROR: DstProjMedArrayShadow.del(): dst_proj_media_ids_shadow is NOT an Array!");
         }
         console.log("DstProjMedArrayShadow.del(): after:",this.dst_proj_media_ids_shadow);
     }
@@ -390,34 +413,28 @@ function IfProjArrayIntersectMedfileIds(dstMedfileIdsByLink, options){
         }
         return stack;
     }
-    this.run=(src_one_media_id, dst_proj_ids, MEDIADATA_SRC, MEDIADATA_DST, dstProjMedArrayShadow, src_cat_key, CATS_DST, CATS_SRC)=>{
+    this.run=(src_one_media_id, dst_proj_ids, MEDIADATA_SRC, MEDIADATA_DST, dstProjMedArrayShadow, src_cat_key, CATS_DST, CATS_SRC, report)=>{
+        //console.log("IfProjArrayIntersectMedfileIds.run(): report=", report);
         _dst_projectfile_media_ids = dst_proj_ids;
         this.dstProjMedArrayShadow = dstProjMedArrayShadow;
-        const dstMedfileIds = this.dstMedfileIdsByLink.instance(options).run(MEDIADATA_SRC, MEDIADATA_DST, src_one_media_id);
+        const dstMedfileIds = this.dstMedfileIdsByLink.instance(options).run(MEDIADATA_SRC, MEDIADATA_DST, src_one_media_id, report);
         _link = dstMedfileIds.link();
         _title = dstMedfileIds.title();
         _langs = dstMedfileIds.langs();
         const _dst_medfile_ids = dstMedfileIds.ids();
-        //@ Костыль: Если вернулся False, значит тут не надо ничего искать. Это произошло потому что инкапсулированный объект, который искал сслыку по ID, не вернул ссылку, потому что её нет именно в китайском языке.
-        //console.log("_dst_medfile_ids=",_dst_medfile_ids)
-        if(_dst_medfile_ids === false){
+        //@ вложенный объект dstMedfileIdsByLink, который искал ссылку по ID, ничего не нашёл. Такое возможно, если например искали только на китайском языке.
+        if(_dst_medfile_ids.length == 0){
             //_report += "do nothing" + os.EOL;
-            console.log("huy!")
-        }
-        else if(this.intersected(_dst_medfile_ids)){
+            console.log("no intersection in cat:", src_one_media_id)
+        }else if(this.intersected(_dst_medfile_ids)){
             //@ it's good scenario. Это значит, что в целевом проекте, в рассматриваемой категории есть соответствующая ссылка, как и в проекте-источнике
-            // TODO: Отключили оповещение о хороших совпдаающих ссылках
-            // const msg = "GOOD: Link "+this.link() + " has ID: " + src_one_media_id + " in SRC Project and ID: " + _dst_medfile_ids + " in DST Project" + os.EOL;
-            // _report += msg;
-            // console.log(msg);
-            //console.log("IfProjArrayIntersectMedfileIds.run(): intersected!");
             this.dstProjMedArrayShadow.del(_dst_medfile_ids);
         }else{
             //@ Случай, когда одна медиа одной категории в проекте-источнике не нашла отражения в целевом проекте. Другими словами, в целевой проект нужно будет добавить недостающую ссылку
             //console.log("IfProjArrayIntersectMedfileIds.run(): NOT MATCH!");
             const report2 = make_breadcrumbs(src_cat_key, CATS_SRC);
             //_report += src_cat_key + "-->" + this.link() + "->NO in dst" + os.EOL;
-            _report += report2 + this.link() + " -> " + src_cat_key + " -> NO in dst -> title: " + dstMedfileIds.title() + " -> langs: "+ dstMedfileIds.langs() + os.EOL;
+            report.write(report2 + this.link() + " -> " + src_cat_key + " -> NO in dst -> title: " + dstMedfileIds.title() + " -> langs: "+ dstMedfileIds.langs());
         }
         return this;
     }
@@ -432,6 +449,7 @@ function DstMedfileIdsByLink(srcMediafileLinkById, options){
     const _ID_INDEX = 7;
     const _LINK_INDEX = 5;
     const _LANGS_INDEX = 10;
+    const _ENGLISH_LANG_INDEX = 2;
     const _CHINA_LANG_INDEX = 4;
     const _ALL_LANG_INDEX = 12;
     let _matched_ids = [];
@@ -443,9 +461,9 @@ function DstMedfileIdsByLink(srcMediafileLinkById, options){
         return new DstMedfileIdsByLink(srcMediafileLinkById, options);
     }
     this.ids=()=>{return _matched_ids;}
-    this.run=(MEDIADATA_SRC, MEDIADATA_DST, src_one_media_id)=>{
+    this.run=(MEDIADATA_SRC, MEDIADATA_DST, src_one_media_id, report)=>{
         this.src_one_media_id = src_one_media_id;
-        const srcMediafileLink = srcMediafileLinkById.instance(options).run(MEDIADATA_SRC, this.src_one_media_id);
+        const srcMediafileLink = srcMediafileLinkById.instance(options).run(MEDIADATA_SRC, this.src_one_media_id, report);
         _link = srcMediafileLink.link();
         _title = srcMediafileLink.title();
         _langs = srcMediafileLink.langs();
@@ -457,33 +475,33 @@ function DstMedfileIdsByLink(srcMediafileLinkById, options){
         let _matched_ids = []
         //@ Вообще ссылка есть всегда, просто сюда может вернуться undefined по причине того, что ссылка не относится к китайскому языку
         const media_is_picture = (typeof srcMediafileLink.link() == 'string' && srcMediafileLink.link().startsWith("https://abbsmartsocieties.com/media/"));
-        console.log("exclude_pictures_media =", _options.exclude_pictures_media)
         if(_options.exclude_pictures_media && media_is_picture) {
-            _matched_ids = false;
+            //@ do nothing, skip any actions.
+            //console.log("skipping media picture:", srcMediafileLink.link());
         }else if(srcMediafileLink.link()){
             //@ ищем в Целевом файле Media_data Элементы, у которых есть такая ССылка, как _link
             for(let i=0; i<MEDIADATA_DST.length; i++){
                 if(MEDIADATA_DST[i][_LINK_INDEX] == srcMediafileLink.link()){
                     const langs_array = MEDIADATA_DST[i][_LANGS_INDEX];
-                    const is_china = langs_array.includes(_CHINA_LANG_INDEX);
-                    const is_china_need = _options.only_china && is_china;
-                    const is_all_languages = langs_array.includes(_ALL_LANG_INDEX);
-                    if(is_china_need || is_all_languages){
+                    const is_en_lang_specified = options.langs_need.includes("en");
+                    const is_zh_lang_specified = options.langs_need.includes("zh");
+                    const is_all_lang_specified = options.langs_need.includes("all");
+                    const is_en_lang_in_media = langs_array.includes(_ENGLISH_LANG_INDEX);
+                    const is_zh_lang_in_media = langs_array.includes(_CHINA_LANG_INDEX);
+                    const is_all_lang_in_media = langs_array.includes(_ALL_LANG_INDEX);
+                    const is_en_lang_ensure = is_en_lang_specified && is_en_lang_in_media;
+                    const is_zh_lang_ensure = is_zh_lang_specified && is_zh_lang_in_media;
+                    const is_all_lang_ensure = is_all_lang_specified && is_all_lang_in_media;
+                    if(is_en_lang_ensure || is_zh_lang_ensure || is_all_lang_ensure){
                         _matched_ids.push(MEDIADATA_DST[i][_ID_INDEX]);
                     }
                 }
             }
-            //console.log("DstMedfileIdsByLink.run(): matched_ids=",_matched_ids)
-            //TODO
-        }else{
-            //@ Костыль, чтобы различать, по какой причине массив совпадений пустой
-            _matched_ids = false;
         }
         return _matched_ids;
     }
 }
 function SrcMediafileLinkById(options){
-    let _report = "";
     let _link = undefined;
     let _title = undefined;
     let _langs = undefined;
@@ -491,15 +509,15 @@ function SrcMediafileLinkById(options){
     const _LINK_INDEX = 5;
     const _TITLE_INDEX = 2;
     const _LANGS_INDEX = 10;
+    const _ENGLISH_LANG_INDEX = 2;
     const _CHINA_LANG_INDEX = 4;
     const _ALL_LANG_INDEX = 12;
-    this.report=()=>{return _report;}
     this.link=()=>{return _link;}
     this.title=()=>{return _title;}
     this.langs=()=>{return _langs;}
     this.instance=(options)=>{return new SrcMediafileLinkById(options);}
     //@ param {Number}  src_one_media_id - e.g. 520 - идентифакатор медиа, который взят из массива медиа айдишников в описании одной из категорий
-    this.run=(MEDIADATA_SRC, src_one_media_id)=>{
+    this.run=(MEDIADATA_SRC, src_one_media_id, report)=>{
         //console.log("SrcMediafileLinkById.run() src_one_media_id=",src_one_media_id);
         //@ проход по всем элементам файла media_data проекта-источника
         for(let i=0; i<MEDIADATA_SRC.length; i++){
@@ -508,13 +526,17 @@ function SrcMediafileLinkById(options){
                 //console.log("SrcMediafileLinkById.run(): src_one_media_id=",src_one_media_id);
                 //@ Костыль - условие чтобы сравнивались медиа только на китайском
                 const langs_array = MEDIADATA_SRC[i][_LANGS_INDEX];
-                console.log("langs_array=",langs_array);
-                let is_china = false;
-                if(options && options.only_china){
-                    is_china = langs_array.includes(_CHINA_LANG_INDEX)
-                }
-                const is_all_languages = langs_array.includes(_ALL_LANG_INDEX);
-                if(is_china || is_all_languages){
+                const is_en_lang_specified = options.langs_need.includes("en");
+                const is_zh_lang_specified = options.langs_need.includes("zh");
+                const is_all_lang_specified = options.langs_need.includes("all");
+                const is_en_lang_in_media = langs_array.includes(_ENGLISH_LANG_INDEX);
+                const is_zh_lang_in_media = langs_array.includes(_CHINA_LANG_INDEX);
+                const is_all_lang_in_media = langs_array.includes(_ALL_LANG_INDEX);
+                const is_en_lang_ensure = is_en_lang_specified && is_en_lang_in_media;
+                const is_zh_lang_ensure = is_zh_lang_specified && is_zh_lang_in_media;
+                const is_all_lang_ensure = is_all_lang_specified && is_all_lang_in_media;
+                //console.log("langs_array=",langs_array);
+                if(is_en_lang_ensure || is_zh_lang_ensure || is_all_lang_ensure){
                     _link = MEDIADATA_SRC[i][_LINK_INDEX];
                     //console.log("SrcMediafileLinkById.run() finded link=",_link);
                     _langs = MEDIADATA_SRC[i][_LANGS_INDEX];
